@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calculator with React.js</title>
-  <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculator with React.js | Simple & Accurate Calculator</title>
+<meta name="description" content="Calculator for fast and accurate calculations. Supports addition, subtraction, multiplication, division, and history of operations.">
+<meta name="keywords" content="calculator, React calculator, online calculator, math calculator, free calculator, addition, subtraction, multiplication, division, calculation history">
+<meta name="author" content="Your Name or Company">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+<link rel="shortcut icon" href="favicon.png" type="image/x-icon">
   <style type="text/tailwindcss">
     @theme{
       --text: #ebebeb;
@@ -16,6 +20,9 @@
       --background: #2D2A37;
       --gradient-main: 180deg, #807ECE 0%, #8E7ECE 100%;
       --gradient: 180deg, rgba(0,0,0,.05) 0%, rgba(255,255,255,.05) 100%;
+      --background-gradient: 90deg, #2D2A37 0%, rgba(45, 42, 55, 0.00) 100%;
+      --background-gradient-top: 180deg, #2D2A37 0%, rgba(45, 42, 55, 0.00) 100%;
+      --background-gradient-bottom: 0deg, #2D2A37 0%, rgba(45, 42, 55, 0.00) 100%;
       --shadow: 0px 11px 7px 0px rgba(0, 0, 0, 0.01), 
         0px 7px 7px 0px rgba(0, 0, 0, 0.04), 
         0px 4px 6px 0px rgba(0, 0, 0, 0.10), 
@@ -32,21 +39,31 @@
         0px 6px 8px 0px rgba(255, 255, 255, 0.10) inset, 
         0px -4px 5px 0px rgba(0, 0, 0, 0.22) inset;
     }
+    .fade-scroll {
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .fade-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
   </style>
 </head>
 <body class="text-(--text) font-(--font-sans) antialiased bg-linear-(--gradient-main) min-h-screen">
   <div id="root"></div>
   
-  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@tailwindcss/browser@4" defer></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" defer></script>
   <script type="text/babel">
 
     const textVariants = {
       default: 'text-xl',
+      smaller: 'text-base',
       muted: 'text-xl text-(--text-secondary)',
       heading: 'text-2xl',
       blast: 'text-3xl'
@@ -114,6 +131,7 @@
       return (
         <Text 
           as="button" 
+          role="button"
           variant="heading"
           className={`
             grid place-items-center rounded-xl cursor-pointer text-(--text)
@@ -122,9 +140,11 @@
             ${buttonVariants[variant]}
             ${className ? className : ''}
           `}
+          aria-label={`Botão ${typeof children === 'string' ? children : 'ícone'}`}
+          tabIndex={0}
           {...props}
         >{children}</Text>
-      )
+      );
     }
 
     function Card ({children, className, ...props}){
@@ -174,45 +194,78 @@
       const { updateHistory } = React.useContext(CalculatorContext);
 
       function doOparation(input) {
-        if(input == 'C'){
+        const operators = ['+', '-', '*', '/', ','];
+
+        if (input === 'C') {
           setOperation("");
           setResult("");
           return;
         }
 
-        if(input == 'delete'){
+        if (input === 'delete') {
           setResult("");
-          setOperation(operation.slice(0, -1));
+          setOperation(prev => prev.slice(0, -1));
           return;
         }
 
-        if (input == '\u00F7') {
-          setOperation(operation + " /");
+        if (input === '=') {
+          const hasOperator = /[+\-*/]/.test(operation);
+          if (!hasOperator) return;
+
+          try {
+            const operationResult = eval(operation.replace(/,/g, '.'));
+            const parseResult = operationResult.toString().replace('.', ',');
+            setResult(parseResult);
+            updateHistory(operation, parseResult);
+          } catch {
+            setResult("Erro");
+          }
           return;
         }
 
-        if(result){
-          setOperation(isNaN(input) 
-            ? `${result}${input}`
-            : input)
+        const lastChar = operation.slice(-1);
+        const isLastOperator = ['+', '-', '*', '/'].includes(lastChar);
+
+        if (operation === '' && ['+', '*', '/', ','].includes(input)) return;
+
+        if (input === ',') {
+          const partes = operation.split(/[\+\-\*\/]/);
+          const ultimoNumero = partes[partes.length - 1];
+          if (ultimoNumero.includes(',')) return;
+          setOperation(prev => prev + ',');
+          return;
+        }
+
+        if (isLastOperator && ['+', '-', '*', '/'].includes(input)) {
+          if (operation === '-') {
+            if (input === '+') {
+              setOperation("0");
+              return;
+            }
+            return;
+          }
+          setOperation(prev => prev.slice(0, -1) + input);
+          return;
+        }
+
+        if (operation === '0' && input === '0') return;
+
+        if (/^0$/.test(operation) && /\d/.test(input)) {
+          setOperation(input);
+          return;
+        }
+
+        if (result) {
+          if (operators.includes(input)) {
+            setOperation(`${result}${input}`);
+          } else {
+            setOperation(input);
+          }
           setResult("");
           return;
         }
 
-        if(input == '='){
-          const operationResult = eval(operation.replace(/,/g, '.'));
-          const parseResult = operationResult.toString()?.replace(/\./, ',');
-          setResult(parseResult);
-          updateHistory(operation, parseResult);
-          return;
-        }
-
-        if(input == ',' && !operation.endsWith(',')){
-          setOperation(`${operation},`);
-          return;
-        }
-
-        setOperation(`${operation}${input}`);
+        setOperation(prev => prev + input);
       }
 
       return {
@@ -222,69 +275,218 @@
       }
     }
     
-    function CalculatorDisplay ({operation, result}){
+    function CalculatorDisplay({ operation, result }) {
       return (
         <div className="px-5 flex flex-col gap-2">
-          <Text as="div" variant="muted" className="flex items-center justify-end h-7">{result && operation}</Text>
-          <div className="flex justify-between items-center h-9">
-            <Text variant="muted">=</Text>
-            <Text variant="blast">{result || operation}</Text>
+          <div className="flex relative justify-between items-center h-9 gap-4 before:bg-linear-(--background-gradient) before:block before:absolute before:top-0 before:left-0 before:h-full before:w-6">
+            <div className="fade-scroll flex-1 overflow-x-auto whitespace-nowrap text-right inline-flex justify-end">
+              <Text
+                as="div"
+                variant="muted"
+                className="min-w-max px-1"
+              >
+                {result && operation}
+              </Text>
+            </div>
+          </div>
+
+          <div className="flex relative justify-between items-center h-9 gap-4 before:bg-linear-(--background-gradient) before:block before:absolute before:top-0 before:left-6 before:h-full before:w-6">
+            <Text variant="muted" className="relative z-10">=</Text>
+            <div className="fade-scroll flex-1 overflow-x-auto whitespace-nowrap text-right inline-flex justify-end">
+              <Text
+                variant="blast"
+                className="min-w-max px-1"
+              >
+                {result || operation}
+              </Text>
+            </div>
           </div>
         </div>
-      )
+      );
     }
 
-    function Calculator (){
-      const { operation, result, doOparation} = useCalculator();
-      function handleInputClick(input){
-        doOparation(input);
+    function Calculator() {
+      const { operation, result, doOparation } = useCalculator();
+      const doOparationRef = React.useRef(doOparation);
+      const [keyPressed, setKeyPressed] = React.useState(null);
+
+      React.useEffect(() => {
+        doOparationRef.current = doOparation;
+      }, [doOparation]);
+
+      function handleInputClick(input) {
+        doOparationRef.current(input);
+      }
+
+      React.useEffect(() => {
+        function handleKeyDown(e) {
+          const keyMap = {
+            Enter: '=',
+            '=': '=',
+            '+': '+',
+            '-': '-',
+            '*': '*',
+            '/': '/',
+            ',': ',',
+            '.': ',',
+            c: 'C',
+            C: 'C',
+            Backspace: 'delete',
+            Delete: 'C',
+          };
+
+          const numpadMap = {
+            NumpadAdd: '+',
+            NumpadSubtract: '-',
+            NumpadMultiply: '*',
+            NumpadDivide: '/',
+            NumpadEnter: '=',
+            NumpadDecimal: ',',
+          };
+
+          let input = null;
+
+          if (!isNaN(Number(e.key))) {
+            input = e.key;
+          } else if (keyMap[e.key]) {
+            input = keyMap[e.key];
+          } else if (numpadMap[e.code]) {
+            input = numpadMap[e.code];
+          }
+
+          if (input) {
+            e.preventDefault();
+            setKeyPressed(input);
+            handleInputClick(input);
+          }
+        }
+
+        function handleKeyUp() {
+          setKeyPressed(null);
+        }
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        return () => {
+          window.removeEventListener('keydown', handleKeyDown);
+          window.removeEventListener('keyup', handleKeyUp);
+        };
+      }, []);
+
+      function isButtonActive(buttonInput) {
+        if (!keyPressed) return false;
+        if (keyPressed === ',' && buttonInput === ',') return true;
+        if (keyPressed === ',' && buttonInput === ',') return true;
+        if (keyPressed === 'delete' && buttonInput === 'delete') return true;
+        if (keyPressed === 'C' && buttonInput === 'C') return true;
+        if (keyPressed === '=' && buttonInput === '=') return true;
+        if (keyPressed === '+' && buttonInput === '+') return true;
+        if (keyPressed === '-' && buttonInput === '-') return true;
+        if (keyPressed === '*' && buttonInput === '*') return true;
+        if (keyPressed === '/' && buttonInput === '/') return true;
+        if (/\d/.test(keyPressed) && buttonInput === keyPressed) return true;
+        return false;
       }
 
       return (
         <Card
-          className={`flex flex-col gap-6 w-max pb-8 px-9 pt-14 shadow-(--shadow-main)`}
+          className={`flex flex-col gap-6 w-[22.813rem] pb-8 px-9 pt-14 shadow-(--shadow-main)`}
         >
-          <CalculatorDisplay operation={operation} result={result}/>
+          <CalculatorDisplay operation={operation} result={result} />
           <div className="flex flex-col gap-3">
             {buttons.map((row, index) => (
               <div key={`row-${index}`} className="flex gap-3">
-                {row.map(button => (
-                  <Button 
-                    key={button.input} 
-                    className={button.className || "w-16 h-16"} 
+                {row.map((button) => (
+                  <Button
+                    key={button.input}
+                    className={`${button.className || 'w-16 h-16'} ${
+                      isButtonActive(button.input) ? 'bg-linear-(--gradient-hover)' : ''
+                    }`}
                     variant={button.variant}
+                    data-key={button.input}
                     onClick={() => handleInputClick(button.input)}
                   >
-                    {button.icon ? <i data-lucide={button.input}></i> : (button.display || button.input)}
-                  </Button> 
+                    {button.icon ? <i data-lucide={button.input}></i> : button.display || button.input}
+                  </Button>
                 ))}
               </div>
-            ))}   
+            ))}
           </div>
         </Card>
-      )
-    }  
+      );
+    }
 
-    function OperationHistory (){
+    function OperationHistory() {
       const { history } = React.useContext(CalculatorContext);
-      return(
-        <Card className="flex gap-4 flex-col flex-1 py-10 px-8 shadow-(--shadow-main)">
+      const listRef = React.useRef(null);
+
+      const [showTopGradient, setShowTopGradient] = React.useState(false);
+      const [showBottomGradient, setShowBottomGradient] = React.useState(true);
+
+      React.useEffect(() => {
+        if (listRef.current) {
+          setTimeout(() => {
+            listRef.current.scrollTop = listRef.current.scrollHeight;
+            handleScroll();
+          }, 0);
+        }
+      }, [history]);
+
+      function handleScroll() {
+        if (!listRef.current) return;
+
+        const scrollTop = listRef.current.scrollTop;
+        const scrollHeight = listRef.current.scrollHeight;
+        const clientHeight = listRef.current.clientHeight;
+
+        const nearTop = scrollTop < 20;
+        const nearBottom = scrollTop + clientHeight >= scrollHeight - 20;
+
+        setShowTopGradient(!nearTop);
+        setShowBottomGradient(!nearBottom);
+      }
+
+      return (
+        <Card className="relative flex gap-4 flex-col flex-1 py-10 px-8 shadow-(--shadow-main) min-w-[1px]">
           <header>
-            <Text as="h1" variant="heading">Histórico de Operações</Text>
+            <Text as="h1" variant="heading">Operations History</Text>
           </header>
-          {history.length > 0 ?
-            (
-              <ul className="flex flex-col gap-3 max-h-96 overflow-y-auto">
-                {history.map((value, index) => 
-                  <Text key={`item-${index}`} as="li">{value}</Text>
-                )}
+          {history.length > 0 ? (
+            <div className="relative flex-1 max-h-96 overflow-hidden">
+              {showTopGradient && (
+                <div
+                  className="pointer-events-none absolute top-0 left-0 right-0 h-20 z-10 bg-linear-(--background-gradient-top)"
+                />
+              )}
+              <ul
+                ref={listRef}
+                onScroll={handleScroll}
+                className="flex flex-col overflow-y-auto pr-6 max-h-96 scrollbar-hide fade-scroll"
+                style={{ scrollBehavior: 'auto' }}
+              >
+                {history.map((value, index) => (
+                  <Text
+                    key={`item-${index}`}
+                    variant="base"
+                    className="break-words py-2 border-b border-zinc-600"
+                    as="li"
+                  >
+                    {value}
+                  </Text>
+                ))}
               </ul>
-            ) : (
-              <Text as="p" variant="muted">Nenhuma operação realizada.</Text>
-            )
-          }
+              {showBottomGradient && (
+                <div
+                  className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 z-10 bg-linear-(--background-gradient-bottom)"
+                />
+              )}
+            </div>
+          ) : (
+            <Text as="p" variant="muted">No operations performed.</Text>
+          )}
         </Card>
-      )
+      );
     }
 
     function App () {
@@ -293,7 +495,7 @@
     }, []);
 
       return(
-        <main className={`min-h-screen flex justify-center items-center py-28 px-4`}>
+        <main aria-label="Calculadora interativa" className="min-h-screen flex justify-center items-center py-28 px-4">
           <section className="flex flex-col md:flex-row w-full gap-5 max-w-5xl">
             <CalculatorProvider>
               <Calculator />
